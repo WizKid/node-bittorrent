@@ -17,6 +17,12 @@ var server_peer_id = "-NJ0001-";
 while (server_peer_id.length < 20)
     server_peer_id += String.fromCharCode(Math.random()*256);
 
+function Request(index, begin, length) {
+    this.index = index;
+    this.begin = begin;
+    this.length = length;
+}
+
 function Peer(socket, manager) {
     this.socket = socket;
     this.manager = manager;
@@ -27,6 +33,7 @@ function Peer(socket, manager) {
     this.buffer = "";
     this.queue = [];
     this.drained = true;
+    this.sending = true;
 
     this.socket.setEncoding("binary");
     // this.socket.addListener("connect", this.onConnect);
@@ -124,11 +131,7 @@ Peer.prototype = {
                     break;
                 case "\x06":
                     // request
-                    var index = this.readInt(this.buffer, 5);
-                    var begin = this.readInt(this.buffer, 9);
-                    var length = this.readInt(this.buffer, 13);
-                    sys.puts("request "+ index +", "+ begin +", "+ length);
-                    this.queue.push([index, begin, length]);
+                    this.queue.push(Request(this.readInt(this.buffer, 5), this.readInt(this.buffer, 9), this.readInt(this.buffer, 13)));
                     this.handleRequest();
                     break;
                 case "\x07":
@@ -157,16 +160,22 @@ Peer.prototype = {
         }
     },
     handleRequest: function() {
-        if (this.queue.length == 0) // || !this.drained
+        if (this.queue.length == 0 || this.sending) // || !this.drained
             return;
 
         this.drained = false;
+        this.sending = true;
         var self = this;
         var request = this.queue.shift();
-        sys.puts("handleRequest: "+ request[0] +", "+ request[1] +", "+ request[2]);
-        posix.read(global_fd, request[2], request[0] * 65536 + request[1]).addCallback(function (data) {
-            sys.puts("sendData: "+ request[0] +", "+ request[1] +", "+ request[2]);
-            self.socket.send(self.writeInt(9 + data.length) +"\x07"+ self.writeInt(request[0]) + self.writeInt(request[1]) + data);
+
+        sys.puts("handleRequest: "+ request.index +", "+ request.begin +", "+ request.length);
+        self.socket(self.writeInt(9 + request.length) +"\x07"+ self.writeInt(request.index) + self.writeInt(request.begin));
+        var read = posix.read(global_fd, request.length, request.index * 65536 + request.begin);
+        read.addCallback(function (data) {
+            self.socket.send(data);
+        });
+        read.addListener('eof', function() {
+            self.sending = false;
         });
     },
     onReceive: function(data) {
