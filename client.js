@@ -2,8 +2,6 @@ var posix = require("posix");
 var sys = require("sys");
 var tcp = require("tcp");
 
-// 217.213.5.90:80
-
 function bind(scope, func) {
     var _function = func;
     return function() {
