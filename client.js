@@ -1,7 +1,18 @@
-var posix = require("posix");
+var fs = require("fs");
 var sys = require("sys");
 var tcp = require("tcp");
+var bittorrent = require("./lib/bittorrent");
 
+var t = new bittorrent.Torrent("test.torrent", ".");
+t.load().addCallback(function() {
+    sys.puts(t.infoHash);
+    for (var i in t.files) {
+        var file = t.files[i];
+        sys.puts(file.path +", "+ file.bytes);
+    }
+})
+
+/*
 function bind(scope, func) {
     var _function = func;
     return function() {
@@ -206,4 +217,4 @@ posix.open("test.mkv", process.O_RDONLY, 0666).addCallback(function (fd) {
     global_fd = fd;
     server.listen(80, "217.213.5.90");
 });
-
+ */
