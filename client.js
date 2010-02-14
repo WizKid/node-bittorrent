@@ -10,6 +10,5 @@ client.listen(80, "localhost");
 // Load a torrent and add it to the client
 var t = new bittorrent.Torrent("test.torrent", ".");
 t.load().addCallback(function() {
-    sys.puts(t.infoHash);
     client.addTorrent(t);
 });
